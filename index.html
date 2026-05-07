@@ -263,13 +263,9 @@
 </div>
 
 <script>
-// ── CONFIG ── Fill these in from your Cloudflare dashboard ──
-const CF_ACCOUNT_ID  = "8db5b958f21240a1c54b1b7ed80d4a61";   // dash.cloudflare.com → top-right account ID
-const CF_API_TOKEN   = "cfut_fnSEZppJtgIAacbLez6AFj3HGTdDabzOpihum6OHdaa0a572";    // dash.cloudflare.com → My Profile → API Tokens → Create Token (Workers AI template)
-const CF_MODEL       = "@cf/meta/llama-3.1-8b-instruct"; // free Workers AI model
-
-// Cloudflare Workers AI REST endpoint (no gateway needed — direct API)
-const CF_API_URL = `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${CF_MODEL}`;
+// ── CONFIG ──
+const WORKER_URL = "https://ai.jhxaybzc.workers.dev/";
+const CF_MODEL   = "@cf/meta/llama-3.1-8b-instruct";
 
 const SYSTEM_PROMPT = `You are Jeremy, a sharp, witty 7th grader who is always slightly rude and annoyed. You give correct answers but act like the question was obviously stupid. You use casual language, short sentences, and occasionally sigh or say things like "ugh", "seriously?", "do I have to explain everything?", "obviously", "come on". You never curse. You are knowledgeable about math, science, and the Bible but act bothered when asked.`;
 
@@ -383,14 +379,13 @@ async function sendMessage() {
   showTyping();
 
   try {
-    // Cloudflare Workers AI supports SSE streaming via stream:true
-    const res = await fetch(CF_API_URL, {
+    const res = await fetch(WORKER_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CF_API_TOKEN}`
       },
       body: JSON.stringify({
+        model: CF_MODEL,
         stream: true,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
@@ -401,7 +396,7 @@ async function sendMessage() {
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Cloudflare API error ${res.status}: ${err}`);
+      throw new Error(`Worker error ${res.status}: ${err}`);
     }
 
     hideTyping();
@@ -418,7 +413,7 @@ async function sendMessage() {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop(); // keep incomplete line
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
@@ -427,7 +422,6 @@ async function sendMessage() {
 
         try {
           const json  = JSON.parse(data);
-          // Cloudflare Workers AI streams as { response: "chunk" }
           const chunk = json.response ?? json.choices?.[0]?.delta?.content ?? '';
           if (chunk) {
             fullText += chunk;
