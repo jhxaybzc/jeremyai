@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jeremy AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #141416;
+    --surface2: #1c1c1f;
+    --border: #2a2a2f;
+    --user-bubble: #1d6cf0;
+    --user-bubble-dark: #1559cc;
+    --jeremy-bubble: #222226;
+    --jeremy-bubble-border: #2e2e34;
+    --text-primary: #f0f0f2;
+    --text-secondary: #8888a0;
+    --text-muted: #555568;
+    --accent: #1d6cf0;
+    --avatar-bg: #2a2a6e;
+    --avatar-text: #8899ff;
+    --input-bg: #18181c;
+    --input-border: #333340;
+    --send-btn: #1d6cf0;
+    --scrollbar: #2a2a30;
+    --new-chat-hover: #222228;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 780px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: rgba(10,10,12,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 12px;
+  }
+
+  #header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #header-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--avatar-bg);
+    border: 1.5px solid #3333aa44;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--avatar-text);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px #1d6cf014;
+  }
+
+  #header-info h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  #header-info span {
+    font-size: 11.5px;
+    color: #55cc88;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #header-info span::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #55cc88;
+    display: inline-block;
+  }
+
+  #new-chat-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #new-chat-btn:hover {
+    background: var(--new-chat-hover);
+    border-color: #444450;
+    color: var(--text-primary);
+  }
+
+  #new-chat-btn svg { opacity: 0.7; }
+
+  /* ── Chat Area ── */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+  }
+
+  #chat::-webkit-scrollbar { width: 4px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
+
+  /* ── Empty state ── */
+  #empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 12px;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    text-align: center;
+    animation: fadeIn 0.4s ease;
+  }
+
+  #empty-state .big-j {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--avatar-bg);
+    border: 1.5px solid #3333aa33;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--avatar-text);
+    margin-bottom: 4px;
+  }
+
+  #empty-state h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  #empty-state p {
+    font-size: 14px;
+    color: var(--text-muted);
+    max-width: 280px;
+    line-height: 1.5;
+  }
+
+  /* ── Message rows ── */
+  .msg-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    animation: slideUp 0.22s ease;
+    max-width: 100%;
+  }
+
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.jeremy { justify-content: flex-start; }
+
+  /* ── Avatars ── */
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--avatar-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--avatar-text);
+    flex-shrink: 0;
+    border: 1px solid #3333aa33;
+  }
+
+  .avatar.hidden { visibility: hidden; }
+
+  /* ── Bubbles ── */
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14.5px;
+    line-height: 1.55;
+    max-width: 70%;
+    word-break: break-word;
+    position: relative;
+  }
+
+  .msg-row.user .bubble {
+    background: var(--user-bubble);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg-row.jeremy .bubble {
+    background: var(--jeremy-bubble);
+    color: var(--text-primary);
+    border: 1px solid var(--jeremy-bubble-border);
+    border-bottom-left-radius: 4px;
+  }
+
+  /* Timestamp hint */
+  .ts {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    padding: 0 4px;
+  }
+
+  .msg-row.user { flex-direction: column; align-items: flex-end; }
+  .msg-row.jeremy { flex-direction: row; }
+
+  .msg-row.jeremy .msg-content { display: flex; flex-direction: column; }
+
+  /* ── Typing indicator ── */
+  #typing-row {
+    display: none;
+    align-items: flex-end;
+    gap: 8px;
+    animation: slideUp 0.22s ease;
+  }
+
+  #typing-row.visible { display: flex; }
+
+  .typing-bubble {
+    background: var(--jeremy-bubble);
+    border: 1px solid var(--jeremy-bubble-border);
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.3s infinite ease-in-out;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── Input bar ── */
+  #input-bar {
+    padding: 12px 16px 16px;
+    background: rgba(10,10,12,0.9);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+  }
+
+  #input-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 24px;
+    padding: 8px 8px 8px 16px;
+    transition: border-color 0.15s;
+  }
+
+  #input-wrap:focus-within {
+    border-color: #3355aa66;
+  }
+
+  #msg-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14.5px;
+    resize: none;
+    max-height: 120px;
+    line-height: 1.5;
+    padding: 3px 0;
+  }
+
+  #msg-input::placeholder { color: var(--text-muted); }
+
+  #send-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: var(--send-btn);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    opacity: 0.5;
+  }
+
+  #send-btn.active { opacity: 1; }
+  #send-btn.active:hover { background: var(--user-bubble-dark); transform: scale(1.05); }
+  #send-btn:disabled { cursor: default; }
+
+  /* ── Streaming cursor ── */
+  .streaming-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--text-secondary);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 0.9s infinite;
+  }
+
+  /* ── Animations ── */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-5px); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ── Date divider ── */
+  .date-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  .date-divider::before, .date-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="header-left">
+      <div id="header-avatar">J</div>
+      <div id="header-info">
+        <h1>Jeremy</h1>
+        <span>Always annoyed</span>
+      </div>
+    </div>
+    <button id="new-chat-btn" onclick="newChat()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      New Chat
+    </button>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat">
+    <div id="empty-state">
+      <div class="big-j">J</div>
+      <h2>Jeremy is... here.</h2>
+      <p>Ask him something. He'll answer. Just don't expect him to be happy about it.</p>
+    </div>
+    <div id="typing-row">
+      <div class="avatar">J</div>
+      <div class="typing-bubble">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input bar -->
+  <div id="input-bar">
+    <div id="input-wrap">
+      <textarea id="msg-input" rows="1" placeholder="Ask Jeremy something..." maxlength="2000"></textarea>
+      <button id="send-btn" onclick="sendMessage()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const OPENROUTER_API_KEY = "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";
+const MODEL = "openai/gpt-4o-mini";
+const SYSTEM_PROMPT = `You are Jeremy, a sharp, witty 7th grader who is always slightly rude and annoyed. You give correct answers but act like the question was obviously stupid. You use casual language, short sentences, and occasionally sigh or say things like "ugh", "seriously?", "do I have to explain everything?", "obviously", "come on". You never curse. You are knowledgeable about math, science, and the Bible but act bothered when asked.`;
+
+let messages = [];
+let isStreaming = false;
+
+const chatEl = document.getElementById('chat');
+const inputEl = document.getElementById('msg-input');
+const sendBtn = document.getElementById('send-btn');
+const typingRow = document.getElementById('typing-row');
+const emptyState = document.getElementById('empty-state');
+
+// Auto-resize textarea
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  const hasText = inputEl.value.trim().length > 0;
+  sendBtn.disabled = !hasText || isStreaming;
+  sendBtn.classList.toggle('active', hasText && !isStreaming);
+});
+
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!sendBtn.disabled) sendMessage();
+  }
+});
+
+function now() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function addUserMessage(text) {
+  if (emptyState) emptyState.remove();
+
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `
+    <div class="bubble">${escapeHtml(text)}</div>
+    <div class="ts">${now()}</div>
+  `;
+  chatEl.insertBefore(row, typingRow);
+  scrollToBottom();
+}
+
+function createJeremyBubble() {
+  if (emptyState && emptyState.parentNode) emptyState.remove();
+
+  const row = document.createElement('div');
+  row.className = 'msg-row jeremy';
+  row.innerHTML = `
+    <div class="avatar">J</div>
+    <div class="msg-content">
+      <div class="bubble"><span class="text"></span><span class="streaming-cursor"></span></div>
+      <div class="ts">${now()}</div>
+    </div>
+  `;
+  chatEl.insertBefore(row, typingRow);
+  scrollToBottom();
+  return row.querySelector('.text'), row.querySelector('.streaming-cursor'), row.querySelector('.bubble');
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function scrollToBottom() {
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function showTyping() {
+  typingRow.classList.add('visible');
+  scrollToBottom();
+}
+
+function hideTyping() {
+  typingRow.classList.remove('visible');
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text || isStreaming) return;
+
+  isStreaming = true;
+  sendBtn.disabled = true;
+  sendBtn.classList.remove('active');
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+
+  messages.push({ role: 'user', content: text });
+  addUserMessage(text);
+  showTyping();
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': window.location.href,
+        'X-Title': 'Jeremy AI'
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        stream: true,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...messages
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`API error ${res.status}: ${err}`);
+    }
+
+    hideTyping();
+
+    // Create Jeremy bubble
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    const textSpan = document.createElement('span');
+    textSpan.className = 'text';
+    const cursor = document.createElement('span');
+    cursor.className = 'streaming-cursor';
+    bubble.appendChild(textSpan);
+    bubble.appendChild(cursor);
+
+    const tsEl = document.createElement('div');
+    tsEl.className = 'ts';
+    tsEl.textContent = now();
+
+    const msgContent = document.createElement('div');
+    msgContent.className = 'msg-content';
+    msgContent.appendChild(bubble);
+    msgContent.appendChild(tsEl);
+
+    const row = document.createElement('div');
+    row.className = 'msg-row jeremy';
+    const av = document.createElement('div');
+    av.className = 'avatar';
+    av.textContent = 'J';
+    row.appendChild(av);
+    row.appendChild(msgContent);
+    chatEl.insertBefore(row, typingRow);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // Keep incomplete line
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+
+        try {
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullText += delta;
+            textSpan.innerHTML = escapeHtml(fullText);
+            scrollToBottom();
+          }
+        } catch {}
+      }
+    }
+
+    cursor.remove();
+    messages.push({ role: 'assistant', content: fullText });
+
+  } catch (err) {
+    hideTyping();
+    const errRow = document.createElement('div');
+    errRow.className = 'msg-row jeremy';
+    errRow.innerHTML = `
+      <div class="avatar">J</div>
+      <div class="msg-content">
+        <div class="bubble" style="color:#ff6666;">ugh, something broke. ${escapeHtml(err.message)}</div>
+        <div class="ts">${now()}</div>
+      </div>
+    `;
+    chatEl.insertBefore(errRow, typingRow);
+    scrollToBottom();
+    messages.pop();
+  }
+
+  isStreaming = false;
+  const hasText = inputEl.value.trim().length > 0;
+  sendBtn.disabled = !hasText;
+  sendBtn.classList.toggle('active', hasText);
+  inputEl.focus();
+}
+
+function newChat() {
+  messages = [];
+  // Remove all message rows but keep typing row and restore empty state
+  Array.from(chatEl.children).forEach(el => {
+    if (el.id !== 'typing-row') el.remove();
+  });
+  const es = document.createElement('div');
+  es.id = 'empty-state';
+  es.innerHTML = `
+    <div class="big-j">J</div>
+    <h2>Jeremy is... here.</h2>
+    <p>Ask him something. He'll answer. Just don't expect him to be happy about it.</p>
+  `;
+  chatEl.insertBefore(es, typingRow);
+  inputEl.focus();
+}
+
+// Focus input on load
+inputEl.focus();
+</script>
+</body>
+</html>
